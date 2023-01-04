@@ -1,0 +1,5 @@
+numpy
+plotly
+matplotlib
+opencv
+pysimplegui
