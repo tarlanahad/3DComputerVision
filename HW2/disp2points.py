@@ -43,13 +43,17 @@ def project_disparity_to_3d_norm(disparity, k=3, return_time=False):
 
     naive_3d_points = np.array(project_disparity_to_3d(disparity))
 
-    tree = KDTree(naive_3d_points, leaf_size=2)
+    tree = KDTree(naive_3d_points, leaf_size=10)
 
     for p in naive_3d_points:
         dist, ind = tree.query(p.reshape(1, -1), k=k)
         p1 = naive_3d_points[ind[0][1]]
         p2 = naive_3d_points[ind[0][2]]
-        points.append(np.cross(p1 - p, p2 - p))
+
+        n = np.cross(p1 - p, p2 - p)
+        n = n / np.sqrt(np.sum(n ** 2))
+
+        points.append(list(n))
 
     if return_time:
         points, timer() - start
