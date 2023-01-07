@@ -3,3 +3,6 @@ plotly
 matplotlib
 opencv
 pysimplegui
+tqdm
+scikit-image
+threadpoolctl

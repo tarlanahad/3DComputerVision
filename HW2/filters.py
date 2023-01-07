@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+from tqdm import tqdm
+from timeit import default_timer as timer
 
 
 def get_filter_gaussian(sig, size):
@@ -20,7 +22,9 @@ def p(val, sigma):
     return (1 / normalization) * np.exp(-val / (2 * sigma_sq))
 
 
-def get_bilateral_output(inp, spec_sig, spat_sig, window_size=5):
+def get_bilateral_output(inp, spec_sig, spat_sig, window_size=5, return_time=False):
+    start = timer()
+    inp = inp.astype(float)
     # Get dimensions of input image
     height, width = inp.shape[:2]
 
@@ -31,7 +35,7 @@ def get_bilateral_output(inp, spec_sig, spat_sig, window_size=5):
     output = np.zeros((height - window_size // 2, width - window_size // 2))
 
     # Iterate through image pixels
-    for r in range(window_size // 2, height - window_size // 2):
+    for r in tqdm(range(window_size // 2, height - window_size // 2)):
         for c in range(window_size // 2, width - window_size // 2):
             # Initialize sums
             sum_w = 0
@@ -51,21 +55,28 @@ def get_bilateral_output(inp, spec_sig, spat_sig, window_size=5):
                     sum_w += w
 
             # Set output pixel value
-            output[r, c] = sum / sum_w
+            output[r - window_size // 4, c - window_size // 4] = sum / sum_w
 
+    if return_time:
+        output, timer() - start
     return output
 
 
-def get_joint_bilateral_out(inp, inp_depth, window_size, spat_sigma, spec_sigma):
+def get_joint_bilateral_out(inp, inp_depth, window_size, spat_sig, spec_sig, return_time=False):
+    start = timer()
+
+    inp = inp.astype(float)
+    inp_depth = inp_depth.astype(float)
+
     # Get dimensions of input images
     height, width = inp.shape[:2]
     output = np.zeros((height - window_size // 2, width - window_size // 2))
 
     # Create Gaussian kernel
-    gaussian_kernel = get_filter_gaussian(spat_sigma, window_size)
+    gaussian_kernel = get_filter_gaussian(spat_sig, window_size)
 
     # Iterate through image pixels
-    for r in range(window_size // 2, height - window_size // 2):
+    for r in tqdm(range(window_size // 2, height - window_size // 2)):
         for c in range(window_size // 2, width - window_size // 2):
             # Initialize sums
             sum_w = 0
@@ -78,12 +89,14 @@ def get_joint_bilateral_out(inp, inp_depth, window_size, spat_sigma, spec_sigma)
                     range_difference = np.abs(inp[r, c] - inp[r + i, c + j])
 
                     # Calculate weight
-                    w = p(range_difference, spec_sigma) * gaussian_kernel[i + window_size // 2][j + window_size // 2]
+                    w = p(range_difference, spec_sig) * gaussian_kernel[i + window_size // 2][j + window_size // 2]
 
                     # Update sums
                     sum += inp_depth[r + i, c + j] * w
                     sum_w += w
 
             # Set output pixel value
-            output[r, c] = sum / sum_w
+            output[r - window_size // 4, c - window_size // 4] = sum / sum_w
+    if return_time:
+        output, timer() - start
     return output
