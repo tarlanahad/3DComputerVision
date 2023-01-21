@@ -6,3 +6,4 @@ pysimplegui
 tqdm
 scikit-image
 threadpoolctl
+pandas
