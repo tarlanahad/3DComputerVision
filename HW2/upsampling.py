@@ -1,7 +1,7 @@
 from filters import *
 
 
-def get_iterative_upsampling_out(inp, input_depth, w_size, spat_sig, spec_sig, return_time=False):
+def get_iterative_upsampling_out(inp, input_depth, w_size, spat_sig, spec_sig, return_time=False, show_tqdm = True):
     start = timer()
     # Get upsample factor
     uf = int(np.log2(inp.shape[0] / input_depth.shape[0]))
@@ -17,18 +17,18 @@ def get_iterative_upsampling_out(inp, input_depth, w_size, spat_sig, spec_sig, r
         I = cv2.resize(I, D.shape[:2][::-1])
 
         # Apply Joint_Bilateral filter with resized images
-        D = get_joint_bilateral_out(I, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig)
+        D = get_joint_bilateral_out(I, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig, show_tqdm=show_tqdm)
 
     # Resize depth image to match RGB image and apply Joint_Bilateral filter
     D = cv2.resize(D, inp.shape[:2][::-1])
-    D = get_joint_bilateral_out(inp, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig)
+    D = get_joint_bilateral_out(inp, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig, show_tqdm=show_tqdm)
 
     if return_time:
-        D, timer() - start
+        return D, timer() - start
     return D
 
 
-def get_joint_upsampling_out(inp, inp_depth, w_size, spat_sig, spec_sig, return_time=False):
+def get_joint_upsampling_out(inp, inp_depth, w_size, spat_sig, spec_sig, return_time=False, show_tqdm = True):
     start = timer()
 
     # Get upsample factor
@@ -44,8 +44,8 @@ def get_joint_upsampling_out(inp, inp_depth, w_size, spat_sig, spec_sig, return_
 
     # Apply Joint_Bilateral filter with resized images
 
-    D = get_joint_bilateral_out(I, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig)
+    D = get_joint_bilateral_out(I, D, w_size, spat_sig=spat_sig, spec_sig=spec_sig, show_tqdm=show_tqdm)
 
     if return_time:
-        D, timer() - start
+        return D, timer() - start
     return D
