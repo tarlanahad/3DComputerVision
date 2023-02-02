@@ -61,7 +61,7 @@ def get_bilateral_output(inp, spec_sig, spat_sig, window_size=5, return_time=Fal
             output[r - window_size // 4, c - window_size // 4] = sum / sum_w
 
     if return_time:
-        output, timer() - start
+        return output, timer() - start
     return output
 
 
@@ -103,5 +103,5 @@ def get_joint_bilateral_out(inp, inp_depth, window_size, spat_sig, spec_sig, ret
             # Set output pixel value
             output[r - window_size // 4, c - window_size // 4] = sum / sum_w
     if return_time:
-        output, timer() - start
+        return output, timer() - start
     return output
