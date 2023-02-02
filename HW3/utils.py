@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 from plyfile import PlyData, PlyElement
 from scipy.spatial import cKDTree
+from sklearn.decomposition import PCA
+from scipy.spatial.transform import Rotation as R
+from timeit import default_timer as timer
 
 
 def pts2df(pts):
@@ -17,6 +20,28 @@ def ply2df(path):
     z = plydata['vertex']['z']
 
     return pts2df(np.column_stack((x, y, z)))
+
+
+def get_farthest_distance(points):
+    pca = PCA(n_components=1)
+    reduced_points = pca.fit_transform(points)
+    return reduced_points.max() - reduced_points.min()
+
+
+def find_angular_error(pc1, pc2):
+    pc1_mean = np.mean(pc1, axis=0)
+    pc2_mean = np.mean(pc2, axis=0)
+    pc1_centered = pc1 - pc1_mean
+    pc2_centered = pc2 - pc2_mean
+
+    # Compute the covariance matrix
+    cov = np.dot(pc1_centered.T, pc2_centered)
+
+    U, S, Vt = np.linalg.svd(cov)
+
+    r = R.from_matrix(np.dot(U, Vt))
+    angular_error = r.as_euler('xyz', degrees=True)
+    return angular_error
 
 
 def rotate_point_cloud(angle_x, angle_y, angle_z):
@@ -60,15 +85,14 @@ def rotation_matrix_to_rotation_vector(R):
     return -rotation_vector
 
 
-def add_noise_rotate_translate_pts(vertex_data, noise_std=0.01, degrees=[45, 45, 45], translation_range=10):
+def add_noise_rotate_translate_pts(vertex_data, noise_std=0.01, degrees=[45, 45, 45],
+                                   translation_vector=np.array([5, 5, 5])):
     noisy_vertex_data = vertex_data + np.random.normal(0, noise_std, vertex_data.shape)
 
     R = rotate_point_cloud(degrees[0], degrees[1], degrees[2])
 
     rotation_vector = rotation_matrix_to_rotation_vector(R)
     rotated_vertex_data = so3_rotation(noisy_vertex_data, rotation_vector)
-
-    translation_vector = [np.random.uniform(-translation_range, translation_range) for _ in range(3)]
 
     translated_rotated_vertex_data = rotated_vertex_data + translation_vector
 
@@ -106,6 +130,7 @@ def nearest_neighbor(original_pts, modified_pts, kdtree=None):
 
 
 def icp(original_pts, modified_pts, max_iterations=50, tolerance=1e-10):
+    start = timer()
     original_pts = np.array(original_pts)
     modified_pts = np.array(modified_pts)
     e = 1e9
@@ -123,10 +148,11 @@ def icp(original_pts, modified_pts, max_iterations=50, tolerance=1e-10):
         if np.abs(e - prev_e) < tolerance:
             break
 
-    return original_pts
+    return original_pts, i, timer() - start
 
 
 def trimmed_icp(original_pts, modified_pts, max_iterations=50, tolerance=1e-10, threshold=0.1):
+    start = timer()
     original_pts = np.array(original_pts)
     modified_pts = np.array(modified_pts)
     e = 1e9
@@ -146,7 +172,7 @@ def trimmed_icp(original_pts, modified_pts, max_iterations=50, tolerance=1e-10, 
         if np.abs(e - prev_e) < tolerance:
             break
 
-    return original_pts
+    return original_pts, i, timer() - start
 
 
 '''
@@ -157,30 +183,3 @@ Compute the correlation matrix H between the two point clouds.
 Compute the quaternion that represents the rotation by taking the eigenvector of H corresponding to the largest eigenvalue.
 Convert the quaternion to a rotation matrix.
 '''
-
-
-def quaternion_estimate_transformation(source_points, target_points):
-    # Estimate the centroids of the point clouds
-    source_centroid = np.mean(source_points, axis=0)
-    target_centroid = np.mean(target_points, axis=0)
-    # Subtract the centroids from the point clouds
-    centered_source_points = source_points - source_centroid
-    centered_target_points = target_points - target_centroid
-    # Compute the cross-covariance matrix
-    H = centered_target_points.T @ centered_source_points
-    # Compute the quaternion that maximizes the trace of H
-
-    quat = np.linalg.eig(H)[1][:, np.argmax(np.linalg.eig(H)[0])]
-    # Normalize the quaternion
-    quat /= np.linalg.norm(quat)
-    # Compute the rotation matrix from the quaternion
-    return quat
-
-    R = (quat)
-    # Compute the translation from the centroids
-    t = target_centroid - R @ source_centroid
-    # Return the transformation as a 4x4 matrix
-    return R, t
-    #
-    #
-    # Compute the rotation matrix from the quaternion    q = q / np.linalg.norm(q)    x, y, z, w = q    return np.array([[1 - 2 * y * y - 2 * z * z, 2 * x * y - 2 * z * w, 2 * x * z + 2 * y * w],                     [2 * x * y + 2 * z * w, 1 - 2 * x * x - 2 * z * z, 2 * y * z - 2 * x * w],                     [2 * x * z - 2 * y * w, 2 * y * z + 2 * x * w, 1 - 2 * x * x - 2 * y * y]])
