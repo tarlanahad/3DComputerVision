@@ -26,4 +26,4 @@ def corr(A, B):
 
 
 def ssim(A, B):
-    return structural_similarity(A, B, multichannel=True)
+    return structural_similarity(A, B, channel_axis = -1)
