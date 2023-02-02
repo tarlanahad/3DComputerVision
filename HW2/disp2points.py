@@ -2,37 +2,29 @@ from sklearn.neighbors import KDTree
 import numpy as np
 from timeit import default_timer as timer
 
-f = 3740  # in pixels focal length
-B = 160 / 1000  # in milli meters baseline
-scale = 3
-dmin = 200
+scale = 10.0;
+focal_length = 3740;
+camera_baseline = 160;
+dmin = 200;
 
 
-def project_disparity_to_3d(disparity, return_time=False):
-    start = timer()
-
+def project_disparity_to_3d(disparity):
     points = []
 
     height, width = disparity.shape[:2]
 
-    c = 0
     for y in range(height):  # 0 - height is the y axis index
         for x in range(width):  # 0 - width is the x axis index
 
             # if we have a valid non-zero disparity
             if (disparity[y, x] > 0):
-                Z = (f * B) / (disparity[y, x] + dmin)
+                Z = (focal_length * camera_baseline) / (disparity[y, x] * scale + dmin)
 
-                X = ((x - width / 2) * Z) / f
-                Y = ((y - height / 2) * Z) / f
+                X = ((x - width / 2) * Z) / focal_length
+                Y = ((y - height / 2) * Z) / focal_length
 
-                if c % 50 == 0:
-                    points.append([X, Y, Z])
+                points.append([X, Y, Z])
 
-                c += 1
-
-    if return_time:
-        points, timer() - start
     return points
 
 
